@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f9">
+  <title>纳指与科技股风险提醒</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #fff;
+      --ink: #151c2e;
+      --muted: #687386;
+      --line: #dce2ea;
+      --green: #078763;
+      --red: #d92d20;
+      --amber: #d97706;
+      --blue: #2463eb;
+      --violet: #6d28d9;
+      --shadow: 0 12px 28px rgba(21, 28, 46, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 22px 0 36px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    select, button {
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    select {
+      min-width: 230px;
+      padding: 0 34px 0 12px;
+    }
+
+    button {
+      padding: 0 12px;
+      cursor: pointer;
+    }
+
+    button:disabled { opacity: .55; cursor: wait; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .top-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .signal {
+      min-height: 132px;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .signal-mark {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 24px;
+      font-weight: 850;
+      background: var(--blue);
+    }
+
+    .signal h2 {
+      margin: 0 0 7px;
+      font-size: 22px;
+      line-height: 1.22;
+    }
+
+    .signal p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .meta {
+      padding: 18px;
+      display: grid;
+      gap: 8px;
+      align-content: center;
+      min-height: 132px;
+    }
+
+    .meta-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta-line strong {
+      color: var(--ink);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      min-height: 136px;
+      padding: 16px;
+      display: grid;
+      align-content: space-between;
+      gap: 12px;
+    }
+
+    .metric-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .metric label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .value {
+      font-size: 30px;
+      line-height: 1.1;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .change {
+      margin-top: 3px;
+      font-size: 13px;
+      font-weight: 760;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+    .flat { color: var(--muted); }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.5fr .85fr;
+      gap: 14px;
+    }
+
+    .chart-panel {
+      padding: 16px 16px 10px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .section-head h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .section-head span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .chart {
+      width: 100%;
+      height: 372px;
+      display: block;
+    }
+
+    .rules {
+      padding: 16px;
+    }
+
+    .rule {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 9px;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .rule:first-of-type { border-top: 0; }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: 5px;
+      background: var(--muted);
+    }
+
+    .rule strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 14px;
+    }
+
+    .rule span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .footer {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .error {
+      color: var(--red);
+      font-weight: 750;
+    }
+
+    @media (max-width: 920px) {
+      header, .top-grid, .main-grid { grid-template-columns: 1fr; }
+      .controls { justify-content: flex-start; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .chart { height: 330px; }
+    }
+
+    @media (max-width: 580px) {
+      .shell {
+        width: min(100% - 18px, 1180px);
+        padding-top: 14px;
+      }
+
+      h1 { font-size: 23px; }
+      select, button { width: 100%; }
+      .cards { grid-template-columns: 1fr; }
+      .signal { grid-template-columns: 1fr; }
+      .signal-mark {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+      .metric { min-height: 118px; }
+      .value { font-size: 28px; }
+      .chart { height: 290px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>纳指与科技股风险提醒</h1>
+        <p class="sub">选择 Nasdaq-100、QQQ 或个股。数据由 GitHub Actions 定时刷新，页面每 60 秒自动读取最新 JSON。</p>
+      </div>
+      <div class="controls">
+        <select id="symbolSelect" aria-label="选择标的"></select>
+        <button id="refreshBtn" type="button">↻ 刷新</button>
+      </div>
+    </header>
+
+    <section class="top-grid">
+      <div class="panel signal">
+        <div id="signalMark" class="signal-mark">--</div>
+        <div>
+          <h2 id="signalTitle">正在加载数据</h2>
+          <p id="signalText">如果刚部署，GitHub Actions 第一次更新后会自动显示最新数据。</p>
+        </div>
+      </div>
+      <div class="panel meta">
+        <div class="meta-line"><span>当前标的</span><strong id="activeName">--</strong></div>
+        <div class="meta-line"><span>市场数据日期</span><strong id="dataDate">--</strong></div>
+        <div class="meta-line"><span>数据生成时间</span><strong id="generatedAt">--</strong></div>
+        <div class="meta-line"><span>页面刷新倒计时</span><strong id="nextRefresh">--</strong></div>
+      </div>
+    </section>
+
+    <section class="cards">
+      <article class="panel metric">
+        <div class="metric-top">
+          <label id="priceLabel">标的价格</label>
+          <span id="symbolTag" class="tag">--</span>
+        </div>
+        <div>
+          <div id="priceValue" class="value">--</div>
+          <div id="priceChange" class="change flat">--</div>
+        </div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-top">
+          <label>RSI 14日</label>
+          <span id="rsiTag" class="tag">--</span>
+        </div>
+        <div>
+          <div id="rsiValue" class="value">--</div>
+          <div id="rsiChange" class="change flat">--</div>
+        </div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-top">
+          <label>VIX</label>
+          <span id="vixTag" class="tag">--</span>
+        </div>
+        <div>
+          <div id="vixValue" class="value">--</div>
+          <div id="vixChange" class="change flat">--</div>
+        </div>
+      </article>
+      <article class="panel metric">
+        <div class="metric-top">
+          <label>10年美债</label>
+          <span id="tnxTag" class="tag">--</span>
+        </div>
+        <div>
+          <div id="tnxValue" class="value">--</div>
+          <div id="tnxChange" class="change flat">--</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="main-grid">
+      <div class="panel chart-panel">
+        <div class="section-head">
+          <h3 id="chartTitle">近一年走势</h3>
+          <span id="chartMeta">调整收盘价</span>
+        </div>
+        <svg id="chart" class="chart" role="img" aria-label="price chart"></svg>
+      </div>
+
+      <aside class="panel rules">
+        <div class="section-head">
+          <h3>当前判断</h3>
+          <span>非投资建议</span>
+        </div>
+        <div class="rule">
+          <i id="dotTrend" class="dot"></i>
+          <div><strong>趋势</strong><span id="trendText">--</span></div>
+        </div>
+        <div class="rule">
+          <i id="dotVol" class="dot"></i>
+          <div><strong>波动</strong><span id="volText">--</span></div>
+        </div>
+        <div class="rule">
+          <i id="dotRate" class="dot"></i>
+          <div><strong>利率</strong><span id="rateText">--</span></div>
+        </div>
+        <div class="rule">
+          <i id="dotDrawdown" class="dot"></i>
+          <div><strong>回撤位置</strong><span id="drawdownText">--</span></div>
+        </div>
+        <div class="rule">
+          <i id="dotAction" class="dot"></i>
+          <div><strong>操作提醒</strong><span id="actionText">--</span></div>
+        </div>
+      </aside>
+    </section>
+
+    <p class="footer">
+      数据源：Yahoo Finance chart API，经 GitHub Actions 写入 <code>data/market.json</code>。GitHub 定时任务可能有几分钟延迟；刷新频率不是交易所实时行情。仅作风险监控。
+    </p>
+  </main>
+
+  <script>
+    const REFRESH_MS = 60 * 1000;
+    const DEFAULT_ID = "NDX";
+    let market = null;
+    let selectedId = localStorage.getItem("selectedSymbol") || DEFAULT_ID;
+    let countdownTimer = null;
+    let refreshTimer = null;
+    let nextRefreshAt = Date.now() + REFRESH_MS;
+
+    const $ = (id) => document.getElementById(id);
+    const numberFmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+
+    function latest(bars) { return bars[bars.length - 1]; }
+    function previous(bars) { return bars[bars.length - 2]; }
+    function pct(value) { return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%`; }
+    function point(value, digits = 2) { return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}`; }
+    function cls(value, inverted = false) {
+      const v = inverted ? -value : value;
+      if (v > 0) return "change up";
+      if (v < 0) return "change down";
+      return "change flat";
+    }
+    function avg(values) { return values.reduce((sum, value) => sum + value, 0) / values.length; }
+    function ma(bars, n) { return avg(bars.slice(-Math.min(n, bars.length)).map((bar) => bar.close)); }
+    function maxClose(bars) { return Math.max(...bars.map((bar) => bar.close)); }
+    function minClose(bars) { return Math.min(...bars.map((bar) => bar.close)); }
+
+    function calcRsi(closes, period = 14) {
+      if (closes.length <= period) return NaN;
+      let gain = 0, loss = 0;
+      for (let i = 1; i <= period; i++) {
+        const diff = closes[i] - closes[i - 1];
+        gain += Math.max(diff, 0);
+        loss += Math.max(-diff, 0);
+      }
+      let avgGain = gain / period;
+      let avgLoss = loss / period;
+      for (let i = period + 1; i < closes.length; i++) {
+        const diff = closes[i] - closes[i - 1];
+        avgGain = (avgGain * (period - 1) + Math.max(diff, 0)) / period;
+        avgLoss = (avgLoss * (period - 1) + Math.max(-diff, 0)) / period;
+      }
+      if (avgLoss === 0) return 100;
+      return 100 - 100 / (1 + avgGain / avgLoss);
+    }
+
+    async function loadMarket() {
+      const response = await fetch(`data/market.json?ts=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`market.json HTTP ${response.status}`);
+      return response.json();
+    }
+
+    function populateSelector() {
+      const select = $("symbolSelect");
+      const entries = Object.values(market.symbols)
+        .filter((item) => item.type !== "risk")
+        .sort((a, b) => {
+          const rank = { index: 0, etf: 1, stock: 2 };
+          return (rank[a.type] - rank[b.type]) || a.id.localeCompare(b.id);
+        });
+      select.innerHTML = entries.map((item) => {
+        const type = item.type === "index" ? "指数" : item.type === "etf" ? "ETF" : "个股";
+        return `<option value="${item.id}">${item.symbol} · ${item.name} · ${type}</option>`;
+      }).join("");
+      if (!market.symbols[selectedId]) selectedId = DEFAULT_ID;
+      select.value = selectedId;
+    }
+
+    function evaluate(item) {
+      const bars = item.bars;
+      const last = latest(bars);
+      const prev = previous(bars);
+      const closes = bars.map((bar) => bar.close);
+      const rsi = calcRsi(closes);
+      const prevRsi = calcRsi(closes.slice(0, -1));
+      const ma20 = ma(bars, 20);
+      const ma50 = ma(bars, 50);
+      const ma200 = ma(bars, 200);
+      const high = maxClose(bars);
+      const low = minClose(bars);
+      const drawdown = last.close / high - 1;
+      const oneYearRange = high / low - 1;
+
+      const vix = market.symbols.VIX;
+      const tnx = market.symbols.TNX;
+      const vixLast = latest(vix.bars);
+      const vixPrev = previous(vix.bars);
+      const tnxLast = latest(tnx.bars);
+      const tnxPrev = previous(tnx.bars);
+
+      let state = "neutral";
+      let mark = "稳";
+      let title = "趋势偏强，继续观察";
+      let text = "价格仍在关键均线附近或上方，风险指标未触发强警报。";
+
+      if (vixLast.close >= 22 || tnxLast.close >= 4.7 || last.close < ma50) {
+        state = "bad";
+        mark = "险";
+        title = "回撤风险升高";
+        text = "VIX、10年美债或50日均线触发压力信号，短线防守优先。";
+      } else if (rsi >= 70 || vixLast.close >= 20 || last.close < ma20) {
+        state = "warn";
+        mark = "热";
+        title = rsi >= 70 ? "强势但短线过热" : "高位震荡消化";
+        text = "趋势尚未确认结束，但动能或波动指标提示不适合追高。";
+      } else if (last.close > ma20 && last.close > ma50 && vixLast.close < 20) {
+        state = "good";
+        mark = "强";
+        title = "趋势健康";
+        text = "价格站上短中期均线，VIX 低于20，短线风险可控。";
+      }
+
+      return {
+        last, prev, rsi, prevRsi, ma20, ma50, ma200, high, low, drawdown, oneYearRange,
+        vixLast, vixPrev, tnxLast, tnxPrev, state, mark, title, text,
+      };
+    }
+
+    function color(state) {
+      if (state === "good") return "var(--green)";
+      if (state === "warn") return "var(--amber)";
+      if (state === "bad") return "var(--red)";
+      return "var(--blue)";
+    }
+
+    function colorByCondition(condition, warning = false) {
+      if (condition) return warning ? "var(--amber)" : "var(--green)";
+      return warning ? "var(--green)" : "var(--red)";
+    }
+
+    function render() {
+      const item = market.symbols[selectedId];
+      const view = evaluate(item);
+      const priceChange = view.last.close / view.prev.close - 1;
+      const rsiChange = view.rsi - view.prevRsi;
+      const vixChange = view.vixLast.close - view.vixPrev.close;
+      const tnxChange = view.tnxLast.close - view.tnxPrev.close;
+
+      $("activeName").textContent = `${item.symbol} · ${item.name}`;
+      $("dataDate").textContent = view.last.date;
+      $("generatedAt").textContent = new Date(market.generatedAt).toLocaleString("zh-CN", { hour12: false });
+      $("priceLabel").textContent = item.type === "index" ? "指数点位" : "价格";
+      $("symbolTag").textContent = item.symbol;
+      $("priceValue").textContent = numberFmt.format(view.last.close);
+      $("priceChange").textContent = `${pct(priceChange)} vs 前日`;
+      $("priceChange").className = cls(priceChange);
+
+      $("rsiValue").textContent = Number.isFinite(view.rsi) ? view.rsi.toFixed(1) : "--";
+      $("rsiChange").textContent = Number.isFinite(rsiChange) ? `${point(rsiChange)} vs 前日` : "--";
+      $("rsiChange").className = cls(rsiChange);
+      $("rsiTag").textContent = view.rsi >= 70 ? "超买" : view.rsi >= 60 ? "偏强" : view.rsi >= 45 ? "中性" : "偏弱";
+
+      $("vixValue").textContent = view.vixLast.close.toFixed(2);
+      $("vixChange").textContent = `${point(vixChange)} vs 前日`;
+      $("vixChange").className = cls(vixChange, true);
+      $("vixTag").textContent = view.vixLast.close < 20 ? "低于20" : view.vixLast.close <= 22 ? "20-22" : "高于22";
+
+      $("tnxValue").textContent = `${view.tnxLast.close.toFixed(3)}%`;
+      $("tnxChange").textContent = `${point(tnxChange, 3)} pct pt`;
+      $("tnxChange").className = cls(tnxChange, true);
+      $("tnxTag").textContent = view.tnxLast.close >= 4.7 ? "高压" : view.tnxLast.close <= 4.5 ? "回落" : "偏高";
+
+      $("signalTitle").textContent = view.title;
+      $("signalText").textContent = view.text;
+      $("signalMark").textContent = view.mark;
+      $("signalMark").style.background = color(view.state);
+
+      $("trendText").textContent = view.last.close > view.ma20
+        ? `高于20日均线 ${pct(view.last.close / view.ma20 - 1)}，短线趋势未坏。`
+        : `低于20日均线 ${pct(view.last.close / view.ma20 - 1)}，短线转弱。`;
+      $("volText").textContent = view.vixLast.close < 20
+        ? "VIX 低于20，市场未进入明显恐慌。"
+        : view.vixLast.close <= 22 ? "VIX 位于20-22，波动风险抬升。" : "VIX 高于22，回撤风险明显。";
+      $("rateText").textContent = view.tnxLast.close >= 4.7
+        ? "10年美债升破4.7%，科技股估值压力偏大。"
+        : view.tnxLast.close <= 4.5 ? "10年美债回落到4.5%附近或以下，估值压力缓和。" : "10年美债偏高但未触发4.7%压力线。";
+      $("drawdownText").textContent = `距近一年高点 ${pct(view.drawdown)}；近一年高低区间振幅 ${pct(view.oneYearRange)}。`;
+      $("actionText").textContent = view.state === "bad"
+        ? "不追高，先看VIX、10年美债和50日均线是否修复。"
+        : view.state === "warn" ? "已有仓位可观察，新仓等RSI降温或回踩确认。" : "趋势偏多时继续跟踪，但不要把低波动等同于无风险。";
+
+      $("dotTrend").style.background = view.last.close > view.ma20 ? "var(--green)" : "var(--red)";
+      $("dotVol").style.background = view.vixLast.close < 20 ? "var(--green)" : view.vixLast.close <= 22 ? "var(--amber)" : "var(--red)";
+      $("dotRate").style.background = view.tnxLast.close >= 4.7 ? "var(--red)" : view.tnxLast.close <= 4.5 ? "var(--green)" : "var(--amber)";
+      $("dotDrawdown").style.background = view.drawdown > -0.05 ? "var(--green)" : view.drawdown > -0.1 ? "var(--amber)" : "var(--red)";
+      $("dotAction").style.background = color(view.state);
+
+      $("chartTitle").textContent = `${item.symbol} 近一年走势`;
+      $("chartMeta").textContent = `${view.last.date} · ${market.source}`;
+      renderChart(item.bars);
+    }
+
+    function renderChart(bars) {
+      const svg = $("chart");
+      const rect = svg.getBoundingClientRect();
+      const width = Math.max(320, rect.width || 720);
+      const height = Math.max(260, rect.height || 360);
+      const ml = 56, mr = 18, mt = 18, mb = 34;
+      const plotW = width - ml - mr;
+      const plotH = height - mt - mb;
+      const data = bars.slice(-252);
+      const values = data.map((bar) => bar.close);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const pad = Math.max((max - min) * .08, max * .01);
+      const yMin = min - pad;
+      const yMax = max + pad;
+      const x = (i) => ml + (i / Math.max(1, data.length - 1)) * plotW;
+      const y = (value) => mt + (1 - (value - yMin) / (yMax - yMin)) * plotH;
+      const points = data.map((bar, i) => `${x(i).toFixed(1)},${y(bar.close).toFixed(1)}`).join(" ");
+      let markup = `<rect width="${width}" height="${height}" fill="#fff"></rect>`;
+      for (let i = 0; i <= 5; i++) {
+        const value = yMin + (i / 5) * (yMax - yMin);
+        const yy = y(value);
+        markup += `<line x1="${ml}" y1="${yy}" x2="${width - mr}" y2="${yy}" stroke="#e6eaf1"></line>`;
+        markup += `<text x="${ml - 8}" y="${yy + 4}" text-anchor="end" font-size="11" fill="#687386">${Math.round(value).toLocaleString("en-US")}</text>`;
+      }
+      for (const i of [0, Math.floor(data.length / 2), data.length - 1]) {
+        markup += `<text x="${x(i)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#687386">${data[i].date.slice(5)}</text>`;
+      }
+      markup += `<line x1="${ml}" y1="${height - mb}" x2="${width - mr}" y2="${height - mb}" stroke="#b8c0cc"></line>`;
+      markup += `<polyline points="${points}" fill="none" stroke="#2463eb" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"></polyline>`;
+      markup += `<circle cx="${x(data.length - 1)}" cy="${y(data[data.length - 1].close)}" r="4.5" fill="#2463eb" stroke="#fff" stroke-width="2"></circle>`;
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.innerHTML = markup;
+    }
+
+    async function refresh() {
+      $("refreshBtn").disabled = true;
+      try {
+        market = await loadMarket();
+        populateSelector();
+        render();
+      } catch (error) {
+        $("signalTitle").textContent = "数据加载失败";
+        $("signalText").innerHTML = `<span class="error">${error.message}</span>`;
+        $("signalMark").textContent = "!";
+        $("signalMark").style.background = "var(--red)";
+      } finally {
+        $("refreshBtn").disabled = false;
+        schedule();
+      }
+    }
+
+    function schedule() {
+      clearTimeout(refreshTimer);
+      clearInterval(countdownTimer);
+      nextRefreshAt = Date.now() + REFRESH_MS;
+      refreshTimer = setTimeout(refresh, REFRESH_MS);
+      countdownTimer = setInterval(() => {
+        const seconds = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
+        $("nextRefresh").textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+      }, 1000);
+    }
+
+    $("symbolSelect").addEventListener("change", (event) => {
+      selectedId = event.target.value;
+      localStorage.setItem("selectedSymbol", selectedId);
+      const url = new URL(location.href);
+      url.searchParams.set("symbol", selectedId);
+      history.replaceState(null, "", url);
+      render();
+    });
+
+    $("refreshBtn").addEventListener("click", refresh);
+    window.addEventListener("resize", () => {
+      if (market?.symbols?.[selectedId]) renderChart(market.symbols[selectedId].bars);
+    });
+
+    const requested = new URL(location.href).searchParams.get("symbol");
+    if (requested) selectedId = requested.toUpperCase();
+    refresh();
+  </script>
+</body>
+</html>
