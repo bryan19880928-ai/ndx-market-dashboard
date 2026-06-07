@@ -498,7 +498,9 @@
       const cacheBust = `ts=${Date.now()}`;
       const urls = [
         new URL(`data/market.json?${cacheBust}`, location.href).href,
-        `https://bryan19880928-ai.github.io/ndx-market-dashboard/data/market.json?${cacheBust}`
+        new URL(`market.json?${cacheBust}`, location.href).href,
+        `https://bryan19880928-ai.github.io/ndx-market-dashboard/data/market.json?${cacheBust}`,
+        `https://bryan19880928-ai.github.io/ndx-market-dashboard/market.json?${cacheBust}`
       ];
       const errors = [];
       for (const url of [...new Set(urls)]) {

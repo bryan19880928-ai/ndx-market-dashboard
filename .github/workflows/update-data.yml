@@ -42,7 +42,7 @@ jobs:
           git worktree add /tmp/ndx-pages gh-pages
           rsync -a --delete \
             --exclude='.git' \
-            index.html .nojekyll data/ /tmp/ndx-pages/
+            index.html .nojekyll data /tmp/ndx-pages/
           cd /tmp/ndx-pages
           git add .
           if git diff --cached --quiet; then
