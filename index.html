@@ -64,7 +64,7 @@
       justify-content: flex-end;
     }
 
-    select, button {
+    select, input, button {
       height: 40px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -77,6 +77,17 @@
     select {
       min-width: 230px;
       padding: 0 34px 0 12px;
+    }
+
+    input {
+      width: 180px;
+      padding: 0 12px;
+      text-transform: uppercase;
+    }
+
+    input::placeholder {
+      color: #9aa4b2;
+      text-transform: none;
     }
 
     button {
@@ -306,7 +317,7 @@
       }
 
       h1 { font-size: 23px; }
-      select, button { width: 100%; }
+      select, input, button { width: 100%; }
       .cards { grid-template-columns: 1fr; }
       .signal { grid-template-columns: 1fr; }
       .signal-mark {
@@ -325,10 +336,12 @@
     <header>
       <div>
         <h1>纳指与科技股风险提醒</h1>
-        <p class="sub">选择 Nasdaq-100、QQQ 或个股。数据由 GitHub Actions 定时刷新，页面每 60 秒自动读取最新 JSON。</p>
+        <p class="sub">选择常用标的，或直接输入任意美股 ticker。页面每 60 秒自动刷新。</p>
       </div>
       <div class="controls">
         <select id="symbolSelect" aria-label="选择标的"></select>
+        <input id="customSymbol" type="text" inputmode="latin" autocomplete="off" spellcheck="false" placeholder="输入个股: PLTR">
+        <button id="customBtn" type="button">查看</button>
         <button id="refreshBtn" type="button">↻ 刷新</button>
       </div>
     </header>
@@ -430,7 +443,7 @@
     </section>
 
     <p class="footer">
-      数据源：Yahoo Finance chart API，经 GitHub Actions 写入 <code>data/market.json</code>。GitHub 定时任务可能有几分钟延迟；刷新频率不是交易所实时行情。仅作风险监控。
+      常用标的数据由 GitHub Actions 写入 <code>data/market.json</code>；自定义 ticker 会从浏览器即时请求 Yahoo Finance，并使用公开 CORS 代理兜底。刷新频率不是交易所实时行情。仅作风险监控。
     </p>
   </main>
 
@@ -439,6 +452,7 @@
     const DEFAULT_ID = "NDX";
     let market = null;
     let selectedId = localStorage.getItem("selectedSymbol") || DEFAULT_ID;
+    let customItems = {};
     let countdownTimer = null;
     let refreshTimer = null;
     let nextRefreshAt = Date.now() + REFRESH_MS;
@@ -481,9 +495,150 @@
     }
 
     async function loadMarket() {
-      const response = await fetch(`data/market.json?ts=${Date.now()}`, { cache: "no-store" });
-      if (!response.ok) throw new Error(`market.json HTTP ${response.status}`);
-      return response.json();
+      const cacheBust = `ts=${Date.now()}`;
+      const urls = [
+        new URL(`data/market.json?${cacheBust}`, location.href).href,
+        `https://bryan19880928-ai.github.io/ndx-market-dashboard/data/market.json?${cacheBust}`
+      ];
+      const errors = [];
+      for (const url of [...new Set(urls)]) {
+        try {
+          const response = await fetch(url, { cache: "no-store" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        } catch (error) {
+          errors.push(`${new URL(url).pathname}: ${error.message}`);
+        }
+      }
+      throw new Error(`market.json 加载失败 (${errors.join("; ")})`);
+    }
+
+    function normalizeSymbol(raw) {
+      return raw.trim().toUpperCase().replace(/\s+/g, "").replace(/[^A-Z0-9.^=-]/g, "");
+    }
+
+    function yahooChartUrl(symbol) {
+      return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d&events=history&includeAdjustedClose=true`;
+    }
+
+    function proxyUrls(url) {
+      return [
+        url,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`
+      ];
+    }
+
+    function parseYahooChart(result, symbol) {
+      const timestamps = result.timestamp || [];
+      const quote = result.indicators?.quote?.[0] || {};
+      const adjclose = result.indicators?.adjclose?.[0]?.adjclose || [];
+      const bars = [];
+      for (let i = 0; i < timestamps.length; i++) {
+        const close = adjclose[i] ?? quote.close?.[i];
+        if (close == null) continue;
+        bars.push({
+          date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
+          close: Number(close),
+          open: quote.open?.[i] ?? null,
+          high: quote.high?.[i] ?? null,
+          low: quote.low?.[i] ?? null,
+          volume: quote.volume?.[i] ?? null
+        });
+      }
+      if (bars.length < 30) throw new Error(`${symbol} 数据不足或 ticker 不存在`);
+      const meta = result.meta || {};
+      return {
+        id: `CUSTOM:${symbol}`,
+        symbol,
+        name: meta.longName || meta.shortName || symbol,
+        type: "stock",
+        meta: {
+          currency: meta.currency,
+          exchange: meta.fullExchangeName,
+          timezone: meta.exchangeTimezoneName
+        },
+        bars,
+        fetchedAt: Date.now(),
+        custom: true
+      };
+    }
+
+    async function fetchCustomSymbol(symbol) {
+      const url = yahooChartUrl(symbol);
+      let lastError = null;
+      for (const endpoint of proxyUrls(url)) {
+        try {
+          const response = await fetch(endpoint, { cache: "no-store" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const json = await response.json();
+          const result = json.chart?.result?.[0];
+          const error = json.chart?.error;
+          if (error) throw new Error(error.description || "Yahoo Finance error");
+          if (!result) throw new Error("没有返回行情数据");
+          return parseYahooChart(result, symbol);
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw new Error(`无法读取 ${symbol}。请检查 ticker，或稍后重试。${lastError ? ` (${lastError.message})` : ""}`);
+    }
+
+    function findCachedSymbol(symbol) {
+      return Object.values(market.symbols).find((item) => item.id === symbol || item.symbol === symbol);
+    }
+
+    function getSelectedItem() {
+      if (market.symbols[selectedId]) return market.symbols[selectedId];
+      if (selectedId.startsWith("CUSTOM:")) return customItems[selectedId];
+      return null;
+    }
+
+    async function selectCustomSymbol(raw) {
+      const symbol = normalizeSymbol(raw);
+      if (!symbol) return;
+      const cached = findCachedSymbol(symbol);
+      if (cached) {
+        selectedId = cached.id;
+        $("symbolSelect").value = cached.id;
+        $("customSymbol").value = "";
+        localStorage.setItem("selectedSymbol", selectedId);
+        render();
+        updateUrl(symbol);
+        return;
+      }
+
+      const customId = `CUSTOM:${symbol}`;
+      selectedId = customId;
+      $("customSymbol").value = symbol;
+      $("customBtn").disabled = true;
+      $("signalTitle").textContent = `正在读取 ${symbol}`;
+      $("signalText").textContent = "自定义 ticker 会即时请求 Yahoo Finance，首次读取可能需要几秒。";
+      $("signalMark").textContent = "...";
+      $("signalMark").style.background = "var(--blue)";
+      try {
+        if (!customItems[customId] || Date.now() - customItems[customId].fetchedAt > REFRESH_MS) {
+          customItems[customId] = await fetchCustomSymbol(symbol);
+        }
+        $("symbolSelect").value = "__CUSTOM__";
+        localStorage.setItem("selectedSymbol", customId);
+        localStorage.setItem("customSymbol", symbol);
+        updateUrl(symbol);
+        render();
+      } catch (error) {
+        $("signalTitle").textContent = "自定义标的数据加载失败";
+        $("signalText").innerHTML = `<span class="error">${error.message}</span>`;
+        $("signalMark").textContent = "!";
+        $("signalMark").style.background = "var(--red)";
+      } finally {
+        $("customBtn").disabled = false;
+      }
+    }
+
+    function updateUrl(symbol) {
+      const url = new URL(location.href);
+      url.searchParams.set("symbol", symbol);
+      history.replaceState(null, "", url);
     }
 
     function populateSelector() {
@@ -497,9 +652,17 @@
       select.innerHTML = entries.map((item) => {
         const type = item.type === "index" ? "指数" : item.type === "etf" ? "ETF" : "个股";
         return `<option value="${item.id}">${item.symbol} · ${item.name} · ${type}</option>`;
-      }).join("");
-      if (!market.symbols[selectedId]) selectedId = DEFAULT_ID;
-      select.value = selectedId;
+      }).join("") + `<option value="__CUSTOM__">自定义 ticker</option>`;
+      if (market.symbols[selectedId]) {
+        select.value = selectedId;
+        $("customSymbol").value = "";
+      } else if (selectedId.startsWith("CUSTOM:")) {
+        select.value = "__CUSTOM__";
+        $("customSymbol").value = selectedId.replace("CUSTOM:", "");
+      } else {
+        selectedId = DEFAULT_ID;
+        select.value = selectedId;
+      }
     }
 
     function evaluate(item) {
@@ -565,7 +728,8 @@
     }
 
     function render() {
-      const item = market.symbols[selectedId];
+      const item = getSelectedItem();
+      if (!item) return;
       const view = evaluate(item);
       const priceChange = view.last.close / view.prev.close - 1;
       const rsiChange = view.rsi - view.prevRsi;
@@ -574,7 +738,9 @@
 
       $("activeName").textContent = `${item.symbol} · ${item.name}`;
       $("dataDate").textContent = view.last.date;
-      $("generatedAt").textContent = new Date(market.generatedAt).toLocaleString("zh-CN", { hour12: false });
+      $("generatedAt").textContent = item.custom
+        ? new Date(item.fetchedAt).toLocaleString("zh-CN", { hour12: false })
+        : new Date(market.generatedAt).toLocaleString("zh-CN", { hour12: false });
       $("priceLabel").textContent = item.type === "index" ? "指数点位" : "价格";
       $("symbolTag").textContent = item.symbol;
       $("priceValue").textContent = numberFmt.format(view.last.close);
@@ -622,7 +788,7 @@
       $("dotAction").style.background = color(view.state);
 
       $("chartTitle").textContent = `${item.symbol} 近一年走势`;
-      $("chartMeta").textContent = `${view.last.date} · ${market.source}`;
+      $("chartMeta").textContent = `${view.last.date} · ${item.custom ? "Yahoo Finance live request" : market.source}`;
       renderChart(item.bars);
     }
 
@@ -666,7 +832,11 @@
       try {
         market = await loadMarket();
         populateSelector();
-        render();
+        if (selectedId.startsWith("CUSTOM:")) {
+          await selectCustomSymbol(selectedId.replace("CUSTOM:", ""));
+        } else {
+          render();
+        }
       } catch (error) {
         $("signalTitle").textContent = "数据加载失败";
         $("signalText").innerHTML = `<span class="error">${error.message}</span>`;
@@ -690,21 +860,37 @@
     }
 
     $("symbolSelect").addEventListener("change", (event) => {
+      if (event.target.value === "__CUSTOM__") {
+        $("customSymbol").focus();
+        return;
+      }
       selectedId = event.target.value;
       localStorage.setItem("selectedSymbol", selectedId);
-      const url = new URL(location.href);
-      url.searchParams.set("symbol", selectedId);
-      history.replaceState(null, "", url);
+      const item = market.symbols[selectedId];
+      updateUrl(item?.symbol || selectedId);
       render();
     });
 
     $("refreshBtn").addEventListener("click", refresh);
+    $("customBtn").addEventListener("click", () => selectCustomSymbol($("customSymbol").value));
+    $("customSymbol").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") selectCustomSymbol($("customSymbol").value);
+    });
     window.addEventListener("resize", () => {
-      if (market?.symbols?.[selectedId]) renderChart(market.symbols[selectedId].bars);
+      const item = market ? getSelectedItem() : null;
+      if (item) renderChart(item.bars);
     });
 
     const requested = new URL(location.href).searchParams.get("symbol");
-    if (requested) selectedId = requested.toUpperCase();
+    if (requested) {
+      const symbol = normalizeSymbol(requested);
+      selectedId = symbol === "^NDX" ? "NDX" : symbol;
+      if (!["NDX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD"].includes(selectedId)) {
+        selectedId = `CUSTOM:${symbol}`;
+      }
+    } else if (selectedId.startsWith("CUSTOM:")) {
+      $("customSymbol").value = selectedId.replace("CUSTOM:", "");
+    }
     refresh();
   </script>
 </body>
