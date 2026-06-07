@@ -1,0 +1,13 @@
+[
+  { "id": "NDX", "symbol": "^NDX", "name": "Nasdaq-100", "type": "index" },
+  { "id": "QQQ", "symbol": "QQQ", "name": "Invesco QQQ ETF", "type": "etf" },
+  { "id": "NVDA", "symbol": "NVDA", "name": "NVIDIA", "type": "stock" },
+  { "id": "AAPL", "symbol": "AAPL", "name": "Apple", "type": "stock" },
+  { "id": "MSFT", "symbol": "MSFT", "name": "Microsoft", "type": "stock" },
+  { "id": "GOOGL", "symbol": "GOOGL", "name": "Alphabet", "type": "stock" },
+  { "id": "AMZN", "symbol": "AMZN", "name": "Amazon", "type": "stock" },
+  { "id": "META", "symbol": "META", "name": "Meta Platforms", "type": "stock" },
+  { "id": "TSLA", "symbol": "TSLA", "name": "Tesla", "type": "stock" },
+  { "id": "AVGO", "symbol": "AVGO", "name": "Broadcom", "type": "stock" },
+  { "id": "AMD", "symbol": "AMD", "name": "AMD", "type": "stock" }
+]
